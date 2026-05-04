@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Plaid OAuth Redirect</title>
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+</head>
+<body>
+  <h2>Completing bank connection...</h2>
+  <div id="status"></div>
+  <div id="token" style="font-size:20px; font-weight:bold; margin-top:20px;"></div>
+
+  <script>
+    var linkToken = localStorage.getItem('plaid_link_token');
+
+    var handler = Plaid.create({
+      token: linkToken,
+      receivedRedirectUri: window.location.href,
+      onSuccess: function(public_token, metadata) {
+        document.getElementById('status').innerText = 'Success!';
+        document.getElementById('token').innerText = 'Public Token: ' + public_token;
+      },
+      onExit: function(err, metadata) {
+        document.getElementById('status').innerText = 'Error: ' + JSON.stringify(err);
+      }
+    });
+
+    handler.open();
+  </script>
+</body>
+</html>
