@@ -6,36 +6,35 @@
 </head>
 <body>
   <h2>Ally Account Relink Tool</h2>
-  <input id="link_token_input" type="text" placeholder="Paste link_token here" style="width:500px; padding:8px;" />
-  <br/><br/>
-  <button onclick="startLink()">Connect Ally Account</button>
-  <br/><br/>
-  <div id="status"></div>
+  <div id="status">Initializing...</div>
   <div id="result" style="font-size:20px; font-weight:bold; margin-top:20px;"></div>
 
   <script>
-    // If we're returning from OAuth redirect, resume the flow
-    if (window.location.search.includes('oauth_state_id')) {
-      var linkToken = localStorage.getItem('plaid_link_token');
-      resumeLink(linkToken);
-    }
+    var params = new URLSearchParams(window.location.search);
+    var linkToken = params.get('link_token') || localStorage.getItem('plaid_link_token');
 
-    function startLink() {
-      var linkToken = document.getElementById('link_token_input').value.trim();
-      if (!linkToken) {
-        alert('Please paste your link_token first');
-        return;
-      }
+    if (linkToken) {
       localStorage.setItem('plaid_link_token', linkToken);
-      resumeLink(linkToken);
     }
 
     function resumeLink(linkToken) {
       var config = {
         token: linkToken,
         onSuccess: function(public_token, metadata) {
-          document.getElementById('status').innerText = 'Success!';
-          document.getElementById('result').innerText = 'Public Token: ' + public_token;
+          document.getElementById('status').innerText = 'Login successful! Sending to Retool...';
+          
+          fetch('https://samgray.retool.com/url/plaid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ public_token: public_token })
+          })
+          .then(function(response) {
+            document.getElementById('status').innerText = 'Success! You can close this tab and return to Retool.';
+          })
+          .catch(function(err) {
+            document.getElementById('status').innerText = 'Error sending to Retool: ' + err;
+            document.getElementById('result').innerText = 'Public Token: ' + public_token;
+          });
         },
         onExit: function(err, metadata) {
           if (err) {
@@ -50,6 +49,12 @@
 
       var handler = Plaid.create(config);
       handler.open();
+    }
+
+    if (linkToken) {
+      resumeLink(linkToken);
+    } else {
+      document.getElementById('status').innerText = 'Error: No link_token found.';
     }
   </script>
 </body>
