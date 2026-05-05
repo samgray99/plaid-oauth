@@ -1,30 +1,56 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Plaid OAuth Redirect</title>
+  <title>Ally Relink Tool</title>
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 </head>
 <body>
-  <h2>Completing bank connection...</h2>
+  <h2>Ally Account Relink Tool</h2>
+  <input id="link_token_input" type="text" placeholder="Paste link_token here" style="width:500px; padding:8px;" />
+  <br/><br/>
+  <button onclick="startLink()">Connect Ally Account</button>
+  <br/><br/>
   <div id="status"></div>
-  <div id="token" style="font-size:20px; font-weight:bold; margin-top:20px;"></div>
+  <div id="result" style="font-size:20px; font-weight:bold; margin-top:20px;"></div>
 
   <script>
-    var linkToken = localStorage.getItem('plaid_link_token');
+    // If we're returning from OAuth redirect, resume the flow
+    if (window.location.search.includes('oauth_state_id')) {
+      var linkToken = localStorage.getItem('plaid_link_token');
+      resumeLink(linkToken);
+    }
 
-    var handler = Plaid.create({
-      token: linkToken,
-      receivedRedirectUri: window.location.href,
-      onSuccess: function(public_token, metadata) {
-        document.getElementById('status').innerText = 'Success!';
-        document.getElementById('token').innerText = 'Public Token: ' + public_token;
-      },
-      onExit: function(err, metadata) {
-        document.getElementById('status').innerText = 'Error: ' + JSON.stringify(err);
+    function startLink() {
+      var linkToken = document.getElementById('link_token_input').value.trim();
+      if (!linkToken) {
+        alert('Please paste your link_token first');
+        return;
       }
-    });
+      localStorage.setItem('plaid_link_token', linkToken);
+      resumeLink(linkToken);
+    }
 
-    handler.open();
+    function resumeLink(linkToken) {
+      var config = {
+        token: linkToken,
+        onSuccess: function(public_token, metadata) {
+          document.getElementById('status').innerText = 'Success!';
+          document.getElementById('result').innerText = 'Public Token: ' + public_token;
+        },
+        onExit: function(err, metadata) {
+          if (err) {
+            document.getElementById('status').innerText = 'Error: ' + JSON.stringify(err);
+          }
+        }
+      };
+
+      if (window.location.search.includes('oauth_state_id')) {
+        config.receivedRedirectUri = window.location.href;
+      }
+
+      var handler = Plaid.create(config);
+      handler.open();
+    }
   </script>
 </body>
 </html>
